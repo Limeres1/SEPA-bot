@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sepa-bot"
+version = "0.1.0"
+description = "Bot de ingesta para el dataset SEPA de precios"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "requests>=2.31",
+  "psycopg[binary]>=3.2",
+  "python-dotenv>=1.0",
+]
+
+[project.scripts]
+sepa-bot = "sepa_bot.main:main"
+
+[tool.setuptools]
+packages = ["sepa_bot"]

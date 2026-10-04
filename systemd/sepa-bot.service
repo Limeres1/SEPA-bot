@@ -1,0 +1,14 @@
+[Unit]
+Description=SEPA Bot daily ingest runner
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/sepa-bot
+EnvironmentFile=/opt/sepa-bot/.env
+ExecStart=/opt/sepa-bot/venv/bin/python -m sepa_bot.main --server
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target
