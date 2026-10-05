@@ -59,3 +59,27 @@ jobs:
         with:
           path: data/state/sucursales_seguidas.json
           key: sepa-branch-selection-${{ github.ref_name }}-${{ github.run_id }}
+
+      - name: Diagnose CKAN response
+        shell: bash
+        run: |
+          if [ -n "$CKAN_API_KEY" ]; then
+            echo "CKAN_API_KEY configurada: sí"
+            auth_header=(-H "Authorization: $CKAN_API_KEY")
+          else
+            echo "CKAN_API_KEY configurada: no"
+            auth_header=()
+          fi
+
+          curl -sS -L \
+            -D /tmp/ckan-headers.txt \
+            -o /tmp/ckan-body.txt \
+            -w "HTTP %{http_code}\n" \
+            "${auth_header[@]}" \
+            --get \
+            --data-urlencode "id=sepa-precios" \
+            "https://datos.produccion.gob.ar/api/3/action/package_show"
+
+          grep -iE '^(HTTP/|content-type:|server:|via:)' /tmp/ckan-headers.txt || true
+          head -c 2000 /tmp/ckan-body.txt
+          echo
