@@ -356,12 +356,12 @@ def semana_procesada(db_path: Path, week_date: date) -> bool:
         crear_esquema(conn)
         result = conn.execute(
             _sql_placeholders(
-                "SELECT 1 FROM capturas_semanales WHERE fecha_semana = ?"
+                "SELECT estado FROM capturas_semanales WHERE fecha_semana = ?"
             ),
             (week_date.isoformat(),),
         ).fetchone()
         conn.commit()
-    return result is not None
+    return result is not None and result[0] != "sin_actualizacion"
 
 
 def registrar_sin_actualizacion(db_path: Path, week_date: date, detail: str) -> dict[str, Any]:
@@ -372,7 +372,9 @@ def registrar_sin_actualizacion(db_path: Path, week_date: date, detail: str) -> 
         conn.execute(
             _sql_placeholders(
                 "INSERT INTO capturas_semanales VALUES (?, ?, ?, ?) "
-                "ON CONFLICT (fecha_semana) DO NOTHING"
+                "ON CONFLICT (fecha_semana) DO UPDATE SET "
+                "fecha_consulta=excluded.fecha_consulta, "
+                "estado=excluded.estado, detalle=excluded.detalle"
             ),
             (week_date.isoformat(), queried_at, "sin_actualizacion", detail),
         )
@@ -465,7 +467,9 @@ def capturar_precios_semanales(
         conn.execute(
             _sql_placeholders(
                 "INSERT INTO capturas_semanales VALUES (?, ?, ?, ?) "
-                "ON CONFLICT (fecha_semana) DO NOTHING"
+                "ON CONFLICT (fecha_semana) DO UPDATE SET "
+                "fecha_consulta=excluded.fecha_consulta, "
+                "estado=excluded.estado, detalle=excluded.detalle"
             ),
             (
                 week_date.isoformat(), queried_at,

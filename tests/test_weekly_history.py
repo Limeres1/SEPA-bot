@@ -97,6 +97,8 @@ class WeeklyHistoryTests(unittest.TestCase):
             branches = root / "sucursales.jsonl"
             selection = root / "selection.json"
             database = root / "sepa.db"
+            registrar_sin_actualizacion(database, date(2026, 10, 5), "recurso viejo")
+            self.assertFalse(semana_procesada(database, date(2026, 10, 5)))
             _write_jsonl(products, [
                 {
                     "id_bandera": "10",
@@ -145,22 +147,29 @@ class WeeklyHistoryTests(unittest.TestCase):
                     "SELECT cantidad_referencia_mensual, precio_lista_normalizado "
                     "FROM historial_canasta_semanal WHERE catalogo_key = 'huevos_blancos'"
                 ).fetchone()
+                capture_status = conn.execute(
+                    "SELECT estado FROM capturas_semanales WHERE fecha_semana = '2026-10-05'"
+                ).fetchone()[0]
 
             self.assertEqual(row, ("2026-10-05", "101", 1250.5, 1250.5, "disponible"))
             self.assertEqual(eggs, (30.0, 200.0))
+            self.assertEqual(capture_status, "completada")
 
-    def test_no_update_marker_prevents_duplicate_week(self):
+    def test_no_update_marker_allows_retry_without_duplicate_rows(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             database = Path(temp_dir) / "sepa.db"
             week = date(2026, 10, 5)
 
             registrar_sin_actualizacion(database, week, "recurso viejo")
-            registrar_sin_actualizacion(database, week, "recurso viejo")
+            self.assertFalse(semana_procesada(database, week))
+            registrar_sin_actualizacion(database, week, "sigue sin actualizar")
+            self.assertFalse(semana_procesada(database, week))
 
             with closing(sqlite3.connect(database)) as conn:
-                count = conn.execute("SELECT COUNT(*) FROM capturas_semanales").fetchone()[0]
-            self.assertEqual(count, 1)
-            self.assertTrue(semana_procesada(database, week))
+                capture = conn.execute(
+                    "SELECT estado, detalle FROM capturas_semanales"
+                ).fetchone()
+            self.assertEqual(capture, ("sin_actualizacion", "sigue sin actualizar"))
 
 
 def _write_jsonl(path: Path, rows: list[dict]) -> None:

@@ -43,10 +43,18 @@ de scrapear HTML ni simular clicks.
 
 ## Instalación
 
+En Windows, desde la carpeta del proyecto:
+
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+En Linux/macOS:
+
 ```bash
-cd sepa_bot_demo
-python3 -m venv venv
-source venv/bin/activate          # en Windows: venv\Scripts\activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -75,10 +83,9 @@ python -m sepa_bot.main --once
 python -m sepa_bot.main --server
 ```
 
-El daemon consulta el recurso del lunes a las 14:00. Si el portal no actualizó
-ese recurso, registra el estado “sin actualización” en la base configurada y espera a la
-semana siguiente. Si el proceso estuvo apagado el lunes, prueba el martes y
-mantiene el lunes como fecha de referencia. En Linux se puede usar
+El daemon consulta el recurso del lunes a las 14:00. Si el portal todavía no
+actualizó ese recurso, registra el estado “sin actualización” y puede volver a
+intentarlo el martes, manteniendo el lunes como fecha de referencia. En Linux se puede usar
 `systemd/sepa-bot.service`; en Windows, `scripts\run_server.bat`.
 
 ## Uso
@@ -93,7 +100,33 @@ Esto procesa el recurso del lunes de la semana actual, guarda en la base configu
 los productos reconocidos de una sucursal por cadena y muestra un resumen
 JSON. Puede usarse el martes para recuperar una corrida ausente.
 
-### 2. Dejarlo corriendo semanalmente
+### 2. Ejecutar semanalmente en Windows, sin GitHub Actions
+
+Para correrlo manualmente en la PC, abrir PowerShell en la carpeta del
+proyecto y ejecutar `.\scripts\run_weekly_local.bat`. El script usa siempre
+`.venv\Scripts\python.exe` y guarda el historial en la base SQLite local
+`data\sepa.db`; no necesita `CKAN_API_KEY`, `DATABASE_URL` ni los secretos
+de GitHub Actions. La PC debe estar encendida y conectada a internet mientras
+se ejecuta.
+
+Para automatizarlo, abrir el **Programador de tareas** de Windows y crear una
+tarea básica semanal:
+
+1. Elegir **martes** a las **14:30**, hora de Buenos Aires. El bot toma el
+   lunes como fecha de referencia y permite que el recurso se haya actualizado
+   el martes.
+2. Como programa, elegir `scripts\run_weekly_local.bat` dentro de la carpeta
+   del proyecto.
+3. En las propiedades de la tarea, indicar como **Iniciar en** la carpeta
+   raíz del proyecto.
+4. Si la PC puede estar suspendida, activar **Activar el equipo para ejecutar
+   esta tarea** y comprobar que Windows permite los temporizadores de
+   activación. La tarea no se ejecuta si la PC está apagada.
+
+El archivo SQLite y los resultados quedan en esta PC y no se sincronizan con
+la base PostgreSQL que usaba GitHub Actions.
+
+### 3. Dejarlo corriendo semanalmente
 
 ```bash
 python3 -m sepa_bot.main --daemon
@@ -110,7 +143,7 @@ recomendable es correr `--daemon` bajo un supervisor de procesos
 como un proceso suelto. También se puede invocar `--once` desde cron
 (Linux) o el Programador de tareas (Windows) en el día y horario deseados.
 
-### 3. Inspeccionar un CSV sin descargar nada
+### 4. Inspeccionar un CSV sin descargar nada
 
 Útil la primera vez que se tenga acceso real al dataset, para confirmar
 el esquema exacto de columnas antes de decidir si hace falta

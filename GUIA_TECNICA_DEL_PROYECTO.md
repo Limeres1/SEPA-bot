@@ -7,7 +7,7 @@
 
 SEPA Bot es un proceso de ingesta escrito en Python. Consulta la API CKAN pública del portal de Datos Abiertos de Desarrollo Productivo, obtiene el recurso denominado `Lunes`, verifica su fecha de modificación, descarga el ZIP, extrae sus CSV, los convierte a JSON Lines y guarda el historial semanal en SQLite o PostgreSQL.
 
-La ejecución local está configurada para los lunes a las **14:00 de Buenos Aires**. Si se usa el daemon local y estuvo apagado el lunes, intenta recuperar la captura el martes. En GitHub Actions, el workflow programado se ejecuta los lunes a esa hora y guarda las capturas en PostgreSQL remoto para que no se pierdan al finalizar el runner. La fecha registrada sigue siendo la del lunes. Si el portal todavía no actualizó el recurso en la fecha permitida, el bot registra `sin_actualizacion`.
+El daemon local está configurado para los lunes a las **14:00 de Buenos Aires**; si estuvo apagado o el recurso todavía no se actualizó, puede recuperar la captura el martes. Para una ejecución local puntual, `scripts/run_weekly_local.bat` fuerza SQLite en `data/sepa.db`; puede programarse los martes a las 14:30 con el Programador de tareas de Windows. En GitHub Actions, el workflow programado se ejecuta los lunes a esa hora y guarda las capturas en PostgreSQL remoto para que no se pierdan al finalizar el runner. La fecha registrada sigue siendo la del lunes. Si el portal todavía no actualizó el recurso en la fecha permitida, el bot registra `sin_actualizacion` como pendiente de reintento.
 
 El bot recopila datos. El cálculo del valor mensual de la canasta y los gráficos quedan para la aplicación que consuma la base de datos.
 
@@ -90,6 +90,7 @@ flowchart TD
 | Ruta / archivo | Función |
 |---|---|
 | `scripts/run_server.bat` | En Windows, entra a la carpeta del proyecto e inicia `python -m sepa_bot.main --server`. El proceso debe quedar activo. |
+| `scripts/run_weekly_local.bat` | En Windows, ejecuta una captura con el entorno virtual local y fuerza SQLite en `data/sepa.db`; puede usarse manualmente o desde el Programador de tareas. |
 | `scripts/run_daily.sh` | En Linux, activa el entorno virtual si existe y ejecuta una única vez con `--once`. Para que sea semanal se debe programar este script con cron o usar el daemon. |
 | `systemd/sepa-bot.service` | Ejemplo de servicio Linux que ejecuta el modo servidor y lo reinicia si termina. Requiere ajustar rutas y tener `.env` en la ubicación configurada. |
 | `tests/sample_precios_sepa.csv` | CSV pequeño de ejemplo para inspección/conversión. Contiene identificadores y precios, pero no descripción de producto ni datos de presentación; por eso no prueba el reconocimiento de la canasta. |
@@ -155,6 +156,14 @@ py -3 -m sepa_bot.main --load-db
 - `--load-db`: ejecuta el cargador antiguo de JSONL (`db_loader.py`) hacia su esquema de dimensiones/historial. No ejecuta la captura semanal, que escribe sus propias tablas semanales en la base configurada.
 
 Para operación automática local, `--server` debe quedar ejecutándose en una computadora siempre encendida o como servicio de un servidor. La alternativa en la nube es el workflow de GitHub Actions descrito abajo.
+
+En Windows también se puede programar `scripts/run_weekly_local.bat` para que
+se ejecute una vez por semana. Ese lanzador fija `DB_MODE=sqlite`,
+`DB_PATH=data\sepa.db` (en la raíz del proyecto) y la zona horaria de Buenos
+Aires, independientemente de las variables PostgreSQL usadas por GitHub
+Actions. Para permitir la recuperación de una actualización tardía del lunes,
+se recomienda programarlo el martes a las 14:30; la PC debe estar encendida o
+permitir que el Programador de tareas la active.
 
 ## 7. Configuración
 
