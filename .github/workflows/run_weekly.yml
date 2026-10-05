@@ -49,7 +49,20 @@ jobs:
           key: sepa-branch-selection-${{ github.ref_name }}-${{ github.run_id }}
           restore-keys: |
             sepa-branch-selection-${{ github.ref_name }}-
+  
+      - name: Diagnose CKAN response
+        run: |
+          curl -sS -L \
+            -D /tmp/ckan-headers.txt \
+            -o /tmp/ckan-body.txt \
+            -w "HTTP %{http_code}\n" \
+            --get --data-urlencode "id=sepa-precios" \
+            "https://datos.produccion.gob.ar/api/3/action/package_show"
 
+          grep -iE '^(HTTP/|content-type:|server:|via:)' /tmp/ckan-headers.txt || true
+          head -c 2000 /tmp/ckan-body.txt
+          echo
+      
       - name: Run weekly capture
         run: python -m sepa_bot.main --once
 
@@ -59,3 +72,4 @@ jobs:
         with:
           path: data/state/sucursales_seguidas.json
           key: sepa-branch-selection-${{ github.ref_name }}-${{ github.run_id }}
+
